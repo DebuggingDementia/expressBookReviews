@@ -1,58 +1,50 @@
 // Import Express to create routes
 const express = require('express');
 
-// Import Axios for making HTTP requests (required for this task)
+// Import Axios for making HTTP requests
 const axios = require("axios"); 
 
 // Import the books data
 let books = require("./booksdb.js");
 
-// Import function to check if username is valid
+// Import validation function
 let isValid = require("./auth_users.js").isValid;
 
 // Import users array
 let users = require("./auth_users.js").users;
 
-// Create router for public users
+// Create router
 const public_users = express.Router();
 
 
 // ROUTE: Register a new user
 public_users.post("/register", (req,res) => {
-
-  // Extract username and password from request body
   const {username , password} = req.body;
 
-  // Check if both fields are provided
+  // Validate input
   if(!username || !password ){
     return res.status(400).json({message: "username and password required"});
   }
 
-  // Check if username already exists
+  // Check if user exists
   if(!isValid(username)){
     return res.status(400).json({message : "username already exists"});
   }
 
-  // Add new user to the users array
+  // Add user
   users.push({username, password});
 
-  // Send success response
   return res.json({message : "registered successfully"});
 });
 
 
 // ROUTE: Get all books
 public_users.get('/', async (req, res) => {
-
   try {
-    // Make HTTP request using Axios
-    const response = await axios.get("http://localhost:5000/");
-
-    // Return the data received
-    return res.json(response.data);
-
+    // Simulate async behavior
+    const data = await Promise.resolve(books);
+    return res.json(data);
   } catch (err) {
-    // Handle error
     return res.status(500).json({ message: "Error fetching books" });
   }
 });
@@ -60,91 +52,74 @@ public_users.get('/', async (req, res) => {
 
 // ROUTE: Get book by ISBN
 public_users.get('/isbn/:isbn', async (req, res) => {
-
-  // Get ISBN from request parameters
   const isbn = req.params.isbn;
 
   try {
-    // Make request using Axios
-    const response = await axios.get(`http://localhost:5000/isbn/${isbn}`);
+    const data = await Promise.resolve(books[isbn]);
 
-    // If book not found
-    if (!response.data) {
+    if (!data) {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    // Return book data
-    return res.json(response.data);
-
+    return res.json(data);
   } catch (err) {
-    // Handle error
     return res.status(500).json({ message: "Error fetching book" });
   }
 });
 
 
-// ROUTE: Get books by author
+// ROUTE: Get books by author (case-insensitive + robust)
 public_users.get('/author/:author', async (req, res) => {
-
-  // Get author from parameters
-  const author = req.params.author;
+  const author = req.params.author.trim().toLowerCase();
 
   try {
-    // Make request using Axios
-    const response = await axios.get(`http://localhost:5000/author/${author}`);
+    const data = await Promise.resolve(
+      Object.values(books).filter(book =>
+        book.author && book.author.toLowerCase().includes(author)
+      )
+    );
 
-    // If no books found
-    if (!response.data || response.data.length === 0) {
+    if (!data || data.length === 0) {
       return res.status(404).json({ message: "No books found for this author" });
     }
 
-    // Return books list
-    return res.json(response.data);
-
+    return res.json(data);
   } catch (err) {
-    // Handle error
     return res.status(500).json({ message: "Error fetching author books" });
   }
 });
 
 
-// ROUTE: Get books by title
+// ROUTE: Get books by title (case-insensitive)
 public_users.get('/title/:title', async (req, res) => {
-
-  // Get title from parameters
-  const title = req.params.title;
+  const title = req.params.title.trim().toLowerCase();
 
   try {
-    // Make request using Axios
-    const response = await axios.get(`http://localhost:5000/title/${title}`);
+    const data = await Promise.resolve(
+      Object.values(books).filter(book =>
+        book.title && book.title.toLowerCase().includes(title)
+      )
+    );
 
-    // If no books found
-    if (!response.data || response.data.length === 0) {
+    if (!data || data.length === 0) {
       return res.status(404).json({ message: "No books found for this title" });
     }
 
-    // Return books list
-    return res.json(response.data);
-
+    return res.json(data);
   } catch (err) {
-    // Handle error
     return res.status(500).json({ message: "Error fetching title books" });
   }
 });
 
 
 // ROUTE: Get reviews by ISBN
-public_users.get('/review/:isbn',function (req, res) {
-
-  // Get ISBN from parameters
+public_users.get('/review/:isbn', (req, res) => {
   const isbn = req.params.isbn;
 
-  // Check if book exists
   if (!books[isbn]) {
     return res.status(404).json({ message: "Book not found" });
   }
 
-  // Return reviews
   return res.json(books[isbn].reviews);
 });
 
